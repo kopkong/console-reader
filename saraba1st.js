@@ -23,7 +23,10 @@ const account = {
 
   async function init() {
     console.log('Launching');
-    browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      // headless: false,
+      // executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+    });
     page = await browser.newPage();
 
     await login();
@@ -147,13 +150,16 @@ const account = {
   }
 
   async function displayThreadContent(thread) {
-    console.log(thread.link);
-    await page.goto(thread.link);
+    await page.goto(thread.link, {timeout: 300000});
 
     console.log('Loading thread content');
-    await page.$$eval('.pcb td', tds => tds.forEach(td => {
-      console.log(td.textContent);
-    }));
+    const tds = await page.$$('.pcb td');
+
+    if (tds.length) {
+      tds.forEach((td) => {
+        console.log(td.textContent);
+      });
+    }
 
     rl.question('Input 0 back to list:', async (answer) => {
       if (answer === '0') {
