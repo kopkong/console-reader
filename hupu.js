@@ -16,7 +16,7 @@ const bbs = [
 ];
 
 (async () => {
-  let browser, page, threads;
+  let browser, page, threads, forumId;
 
   async function init() {
     console.log('Launching');
@@ -27,11 +27,11 @@ const bbs = [
     await showBBS();
   }
 
-  async function fetchThreads(bbs) {
+  async function fetchThreads() {
     console.log('Loading page content...');
 
     try {
-      await page.goto('https://m.hupu.com/bbs/' + bbs);
+      await page.goto('https://m.hupu.com/bbs/' + forumId);
       const threadNodes = await page.$$('.common-list li');
       threads = await queryThreadListContent(threadNodes);
     } catch(e) {
@@ -48,7 +48,8 @@ const bbs = [
       const idx = parseInt(answer) - 1;
 
       if (idx < bbs.length) {
-        await fetchThreads(bbs[idx].id);
+        forumId = bbs[idx].id;
+        await fetchThreads();
         await showThreads();
       }
     });
