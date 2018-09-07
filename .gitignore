@@ -43,3 +43,6 @@ testem.log
 .DS_Store
 Thumbs.db
 package-lock.json
+
+# Account config
+/saraba1st/config.js

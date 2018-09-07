@@ -1,6 +1,12 @@
+/**
+ * Read Stage1st Forum
+ */
 const puppeteer = require('puppeteer');
 const readline = require('readline');
 const process = require('process');
+const devices = require('puppeteer/DeviceDescriptors');
+const iPhone = devices['iPhone 8'];
+const account = require('./config');
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -8,14 +14,9 @@ const rl = readline.createInterface({
 });
 
 const routesConfig = {
-  login: 'https://bbs.saraba1st.com/2b/forum.php',
-  waiye: 'https://bbs.saraba1st.com/2b/forum-75-1.html'
-};
-
-// Fill in account and trigger auto login
-const account = {
-  username: '',
-  password: ''
+  login: 'https://bbs.saraba1st.com/2b/member.php?mod=logging&action=login',
+  home: 'https://bbs.saraba1st.com/2b/forum.php',
+  waiye: 'https://bbs.saraba1st.com/2b/forum.php?mod=forumdisplay&fid=75'
 };
 
 (async () => {
@@ -23,17 +24,18 @@ const account = {
 
   async function init() {
     console.log('Launching');
-    const browser = await puppeteer.launch({
-      // headless: false,
-      // executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+    browser = await puppeteer.launch({
+      headless: false,
+      executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
     });
     page = await browser.newPage();
+    await page.emulate(iPhone);
 
     await login();
   }
 
   async function login() {
-    await page.goto(routesConfig.waiye);
+    await page.goto(routesConfig.login);
 
     const loggedStatus = await page.$('#loginstatus');
 
@@ -48,10 +50,11 @@ const account = {
   }
 
   async function autoLogin() {
-    const inputUsername = await page.$('#ls_username');
+
+    const inputUsername = await page.$('input[name=username]');
     await inputUsername.type(account.username);
 
-    const inputPassword = await page.$('#ls_password');
+    const inputPassword = await page.$('input[name=password]');
     await inputPassword.type(account.password);
 
     await triggerLogin();
@@ -59,13 +62,13 @@ const account = {
 
   async function manualLogin() {
     await rl.question('Input Username:', async (username) => {
-      const inputUsername = await page.$('#ls_username');
+      const inputUsername = await page.$('input[name=username]');
       await inputUsername.type(username);
 
       rl.question('Input Password:', async (password) => {
         console.log('logging...');
 
-        const inputPassword = await page.$('#ls_password');
+        const inputPassword = await page.$('input[name=password]');
         await inputPassword.type(password);
 
         await triggerLogin();
@@ -80,16 +83,16 @@ const account = {
     // wait for login submit process
     await page.waitForNavigation();
 
-    // query login status
-    const spanLoginStatus = await page.$('#loginstatus');
+    // check login status
+    if (page.mainFrame().url() === routesConfig.home) {
+      await page.goto(routesConfig.waiye);
 
-    if (spanLoginStatus) {
       await fetchThreads();
 
       await showThreads();
     } else {
       console.log('logging error, exiting');
-      await browser.close();
+      // await browser.close();
     }
   }
 
@@ -97,8 +100,8 @@ const account = {
     console.log('Loading threads...');
 
     try {
-      threads = await page.$$eval('th.new a.xst', els => els.map(el=> {
-        return {title: el.textContent, link: el.href};
+      threads = await page.$$eval('.threadlist a', els => els.map(el=> {
+        return {title: el.textContent.trim(), link: el.href};
       }));
 
     } catch(e) {
@@ -125,7 +128,7 @@ const account = {
 
   async function displayThreadList(list) {
     list.forEach((th,index) => {
-      console.log(`${index + 1}  ${th.title}`);
+      console.log(`${index + 1}  ${th.title.trim()}`);
     });
 
     rl.question('Input thread id (0 to refresh):', async (answer) => {
@@ -153,12 +156,10 @@ const account = {
     await page.goto(thread.link, {timeout: 300000});
 
     console.log('Loading thread content');
-    const tds = await page.$$('.pcb td');
+    const messages = await page.$$eval('.message', nodes => nodes.map( n => n.innerText));
 
-    if (tds.length) {
-      tds.forEach((td) => {
-        console.log(td.textContent);
-      });
+    for(let msg of messages) {
+      console.log(msg.trim());
     }
 
     rl.question('Input 0 back to list:', async (answer) => {
